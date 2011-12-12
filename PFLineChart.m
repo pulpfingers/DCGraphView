@@ -6,17 +6,51 @@
 //  Copyright 2010 davidcharlec.com. All rights reserved.
 //
 
-#import "DCGraph.h"
+#import "PFLineChart.h"
 
-@implementation DCGraph
+@interface PFLineChart (Private)
+- (void)handleUserTouch:(UITouch*)touch;
+@end
+
+@implementation PFLineChart
 
 @synthesize maximumValue, verticalBar;
 @synthesize delegate;
 
--(void)awakeFromNib {
-	
-	numberOfValues = 0;
-	
+- (id) initWithOriginType:(PFLineChartOriginType)type maximumValue:(NSInteger)value {
+    self = [self initWithOriginType:type];
+    if(self) {
+        self.maximumValue = value;
+    }
+    return  self;
+}
+
+- (id)initWithOriginType:(PFLineChartOriginType)type {
+    self = [self initWithFrame:CGRectZero];
+    if(self) {
+        originType = type;
+    }
+    return self;
+}
+
+- (id)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        numberOfValues = 0;
+        items = [[NSMutableArray alloc] init];
+        originType = PFLineChartOriginTypeAbsolute;
+    }
+    return self;
+}
+
+- (void)awakeFromNib {
+    numberOfValues = 0;
+    items = [[NSMutableArray alloc] init];
+    originType = PFLineChartOriginTypeAbsolute;
+}
+
+- (void)drawRect:(CGRect)rect {
+
 	verticalBar = [[UIView alloc] initWithFrame:CGRectMake(self.bounds.size.width - 5, 0, 1, self.bounds.size.height)];
 	[verticalBar setBackgroundColor: [UIColor colorWithWhite:1.0 alpha:0.7]];	
 	[verticalBar setTag:1];
@@ -64,20 +98,29 @@
 	[rightBar setTag:1];
 	[self addSubview:rightBar];
 	[rightBar release];
+    
+    NSLog(@"Draw Items => %@", items);
+    
+    for(PFLineChartItem *item in [items reverseObjectEnumerator]) {
+        [self addSubview:item];
+    }
 	
 }
 
+- (void)addItem:(PFLineChartItem *)item {
+    NSLog(@"New Item");
+    if(originType == PFLineChartOriginTypeRelative) [item setRelativeItem:[items lastObject]];
+    numberOfValues = [[item values] count];
+    [items addObject:item];
+    [self setNeedsDisplay];
+}
+
 -(void)addLine:(NSString *)label color:(UIColor *)color data:(NSArray*)data {	
-	
-	GraphLine *line = [[GraphLine alloc] initWithFrame:self.bounds];
-	line.color = color;
-	line.values = data;	
-	line.maxValue = maximumValue;
-	
-	[self addSubview:line];
-	[line release];
-	
-	numberOfValues = [data count];
+	PFLineChartItem *item = [[PFLineChartItem alloc] initWithChart:self andValues:data];
+	item.fillColor = color;
+	item.maxValue = maximumValue;
+    [self addItem:item];	
+    [item release];
 }
 
 -(void)reset {
